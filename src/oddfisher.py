@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from scipy.stats import hypergeom as dhyper
+from scipy.stats import hypergeom
 from scipy.optimize import brentq
 
 
@@ -47,6 +47,38 @@ def construct_2x2(
     pass
 
 
+def dhyper(
+    k: list[int],
+    M: int,
+    n: int,
+    N: int,
+    is_log: bool = True,
+) -> float:
+    """Compute non-central hypergeometric distribution H with non-centrality parameter ncp, the odd ratio.
+    
+    Does not work for boundary values for ncp (0, int), but it does not need to.
+
+    mapping of R to scipy::
+
+        * def hyper_logpmf(k, M, n, N): return rmath.lib.dhyper(k, n, M-n, N, True)
+        * def hyper_pmf(k, M, n, N): return rmath.lib.dhyper(k, n, M-n, N, False)
+        * def hyper_cdf(k, M, n, N): return rmath.lib.phyper(k, n, M-n, N, True, False)
+        * def hyper_sf(k, M, n, N): return rmath.lib.phyper(k, n, M-n, N, False, False)
+
+    Args:
+        k:
+        M:
+        n:
+        N:
+        is_log:
+
+    """
+    if is_log:
+        return hypergeom.logpmf(k, M, n, N)
+
+    return hypergeom.pmf(k, M, n, N)
+
+
 def compute_dnhyper(
     data: np.ndarray,
     odd_ratio: float | None = None,
@@ -61,9 +93,9 @@ def compute_dnhyper(
     x = data[0][0]
     lo = max(0, k - n)
     hi = min(k, m)
-    nval = odd_ratio
+    nval = "odd_ratio"
 
-    logdc = dhyper(np.arange(lo, hi + 1), m, n, k, log=is_log)
+    logdc = dhyper(np.arange(lo, hi + 1), m, n + m, k, log=is_log)
 
 
 def fisher_exact() -> None:
