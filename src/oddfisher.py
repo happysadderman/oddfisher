@@ -66,10 +66,10 @@ def dhyper(
         * def hyper_sf(k, M, n, N): return rmath.lib.phyper(k, n, M-n, N, False, False)
 
     Args:
-        k: # of Successes
-        M: Total number of objects
-        n: Total number of Type I objects (Total Positives)
-        N: # of Total Type I object drawn (True Positive)
+        k: # of Successes (or called diseased)
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects or has disease (Total Positives, TP + FN)
+        N: # of Total Type I object drawn or dignosed as diseased (TP + FP)
         is_log:
 
     Examples:
@@ -77,11 +77,17 @@ def dhyper(
         array([-1.79175947, -0.69314718, -1.2039728 , -3.40119738])
     
     """
-    if is_log:
-        return hypergeom.logpmf(k, M, n, N)
+    return hypergeom.logpmf(k, M, n, N) if is_log else hypergeom.pmf(k, M, n, N)
 
-    return hypergeom.pmf(k, M, n, N)
 
+def phyper(
+    k: list[int],
+    M: int,
+    n: int,
+    N: int,
+    is_log: bool = True,
+) -> float:
+    
 
 def compute_dnhyper(
     support: list[int],
@@ -123,24 +129,54 @@ def compute_mnhyper(
     return np.sum(support * compute_dnhyper(data, odd_ratio, is_log))
 
 
+def compute_phyer(
+    q: int,
+    ncp: int = 1,
+    use_upper_tail: bool = False,  
+) -> np.float:
+    """Compute phyper.
+    
+    Args:
+    
+    Returns:
+    
+    """
+    if ncp == 1:
+        return phyper(
+            x - 1 if use_upper_tail else x,
+            m,
+            n,
+            k,
+            use_upper_tail=use_upper_tail,
+        )
+    
+    if ncp == 0:
+        return q <= lo if use_upper_tail else q >= lo
+    
+    if ncp == np.inf:
+        return q <= hi if use_upper_tail else q >= hi
+    
+    return sum(dnhyper(ncp) * [support >= q] if use_upper_tail else [support <= q])
 
-def compute_dnhyper(
+
+def compute_dnhyper(  # dhyper?
     data: np.ndarray,
     odd_ratio: float | None = None,
     is_log: bool = True,
 ) -> float:
     """Compute non-central hypergeomtric distribution parameter."""
     mn = data.sum(axis=0)
-    m = mn[0]  # Total Type I drawn (FP + TP)
-    n = mn[1]  # FN + TN
-    k = data.sum(axis=1)[0] # TP + FN
+    M = sum(mn)
+    n = mn[0]  # Total diseased, TP + FN
+    # M_minus_n = mn[1]  # Total healthy, FP + TN
+    N = data.sum(axis=1)[0]  # Number called diseased, TP + FP
 
-    x = data[0][0]
-    lo = max(0, k - n)
-    hi = min(k, m)
+    # x = data[0][0]  # TP
+    lo = max(0, N - n)
+    hi = min(N, n)
     nval = "odd_ratio"
 
-    logdc = dhyper(np.arange(lo, hi + 1), m + n, k, m, log=is_log)
+    logdc = dhyper(np.arange(lo, hi + 1), M, n, N, log=is_log)
 
 
 
