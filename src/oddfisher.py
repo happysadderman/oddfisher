@@ -1,4 +1,4 @@
-# oddfisher.py, a python version of R fisher exact test with od parameter.
+# oddfisher.py, a python version of R fisher exact test with odd ratio parameter.
 
 import os
 import sys
@@ -172,7 +172,7 @@ def compute_pnhyper(
     is_log: bool = True,
     is_lower_tail: bool = True,
     odd_ratio: int | float = 1,
-) -> np.float:
+) -> float:
     """Compute phyper.
     
     Args:
@@ -228,7 +228,7 @@ def compute_dnhyper(
     """Compute non-central hypergeomtric distribution parameter.
     
     """
-    d = dhyper(support, M, n, N, log=is_log) + np.log(odd_ratio) * support
+    d = dhyper(support, M, n, N, is_log=is_log) + np.log(odd_ratio) * support
     d = np.exp(d - max(d))
     return d / np.sum(d)
 
@@ -280,11 +280,92 @@ def get_pvalue(
     return two_tailed_val, lower_tail_val, upper_tail_val
 
 
+def get_confidence_interval(
+    alpha: float,
+    support: list[int],
+    x: int,
+    M: int,
+    n: int,
+    N: int,
+    is_log: bool,
+    odd_ratio: int | float,
+    alternative: str, 
+) -> tuple[float, float]:
+    """Get confidence interval for the odd_ratio."""
+    lo = max(0, N - n)
+    hi = min(N, n)    
 
-def fisher_exact(
+    if x == hi:
+        upper_bound = np.inf
+
+    if x == lo:
+        lower_bound = 0
+
+    p_high = compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1, is_lower_tail=True)
+    p_low = compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1, is_lower_tail=False)
+
+    if p_high < alpha:
+        upper_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
+    elif p_high > alpha:
+        upper_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1/t, is_lower_tail=True) - alpha, np.finfo(float).eps, 1)
+        upper_bound = 1 / upper_bound
+    else:
+        upper_bound = 1
+
+    if p_low > alpha:
+        lower_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
+    elif p_low < alpha:
+        lower_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1/t, is_lower_tail=False) - alpha, np.finfo(float).eps, 1)
+        lower_bound = 1 / lower_bound
+    else:
+        lower_bound = 1 
+
+    if alternative == "less":
+        return 0, upper_bound
+
+    elif alternative == "greater":
+        return lower_bound, np.inf
+    
+    return lower_bound, upper_bound
+
+
+def compute_mle_for_oddratio(
+    support: list[int],
+    x: int,
+    M: int,
+    n: int,
+    N: int,
+    is_log: bool,
+    odd_ratio: int | float,   
+) -> int | float:
+    """Compute MLE for odd ratio by solving E(X) = x."""
+    lo = max(0, N - n)
+    hi = min(N, n)
+
+    if x == lo:
+        return 0
+    elif x == hi:
+        return np.inf
+    
+    mu = compute_mnhyper(support, M, n, N, is_log=is_log, odd_ratio=1)
+    print(mu)
+    if mu > x:
+        root = brentq(lambda t: compute_mnhyper(support, M, n, N, is_log=is_log, odd_ratio=t) - x, 0, 1)
+    elif mu < x:
+        root = brentq(lambda t: compute_mnhyper(support, M, n, N, is_log=is_log, odd_ratio=1/t) - x, np.finfo(float).eps, 1)
+        root = 1 / root
+    else:
+        root = 1
+
+    return root
+
+
+def run_fisher_exact(
     data: np.ndarray,
     odd_ratio: int | float = 1,
-    is_log: bool = True 
+    conf_level: float = 0.95,
+    is_log: bool = True,
+    alternative: str = "two_sided",
 ) -> None:
     """
     >>> compute_dnhyper(np.array([[1, 3], [2, 4]]), odd_ratio=10, is_log=True)
@@ -296,11 +377,65 @@ def fisher_exact(
     # M_minus_n = mn[1]  # Total healthy, FP + TN
     N = data.sum(axis=1)[0]  # Number called diseased, TP + FP
 
-    # x = data[0][0]  # TP
+    x = data[0][0]  # TP
     lo = max(0, N - n)
     hi = min(N, n)
     # nval = "odd_ratio"
     support = np.arange(lo, hi + 1)
     
+    estimate = compute_mle_for_oddratio(support, x, M, n, N, is_log=is_log, odd_ratio=odd_ratio)
     # compute_dnhyper(support, M, n, N, is_log=is_log, odd_ratio=odd_ratio)
+    alpha = (1 - conf_level) / 2 if alternative == "two_sided" else 1 - conf_level
+    print(estimate)
+    confidence_interval = get_confidence_interval(
+        alpha,
+        support,
+        x,
+        M,
+        n,
+        N,
+        is_log=is_log,
+        odd_ratio=odd_ratio,
+        alternative=alternative,
+    )
 
+    return estimate, confidence_interval
+
+
+def arg_parser() -> argparse.ArgumentParser:
+    """Build argument parser."""
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("a", type=int, help="2x2 contingency table, a")
+    parser.add_argument("b", type=int, help="2x2 contingency table, b")
+    parser.add_argument("c", type=int, help="2x2 contingency table, c")
+    parser.add_argument("d", type=int, help="2x2 contingency table, d")
+    parser.add_argument("--alternative", type=str, default="two-sided", help="alternative hypothesis: one of two-sided (default), less, or greater")
+    parser.add_argument("--odd-ratio", type=float, default=1, help="hypothesized odd ratio")
+    parser.add_argument("--conf-level", type=float, default=0.95, help="confidence level, default is 0.95")
+
+    return parser.parse_args()
+
+
+def main():
+    args = arg_parser()
+    pval, ci = run_fisher_exact(
+        data = np.array([[args.a, args.b], [args.c, args.d]]),
+        odd_ratio = args.odd_ratio,
+        conf_level=args.conf_level,
+        alternative=args.alternative,
+    )
+
+    print("2x2 contingency table")
+    print(f"{args.a}, {args.b}")
+    print(f"{args.c}, {args.d}")
+    print("-------------------")
+    print(f"odd-raio: {args.odd_ratio}")
+    print(f"alternative: {args.alternative}")
+    print("-------------------")
+    print(f"p-value: {pval}")
+    print(f"confidence interval at {args.conf_level}: {ci}")
+
+
+if __name__ == "__main__":
+    main()
