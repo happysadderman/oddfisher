@@ -228,8 +228,13 @@ def compute_dnhyper(
     """Compute non-central hypergeomtric distribution parameter.
     
     """
+    print("dhyper",  dhyper(support, M, n, N, is_log=is_log))
+    print(odd_ratio, odd_ratio, np.log(odd_ratio))
+    print(np.log(odd_ratio) * support)
     d = dhyper(support, M, n, N, is_log=is_log) + np.log(odd_ratio) * support
+    print(d)
     d = np.exp(d - max(d))
+    print(d/np.sum(d))
     return d / np.sum(d)
 
 
@@ -253,6 +258,7 @@ def get_pvalue(
         two_tailed_val = int(x == hi)
     else:
         d = compute_dnhyper(support, M, n, N, is_log=is_log, odd_ratio=odd_ratio)
+        print("d", d)
         two_tailed_val = sum(d[d <= d[x - lo + 1] * relError])
     
     lower_tail_val = compute_pnhyper(
@@ -303,7 +309,9 @@ def get_confidence_interval(
 
     p_high = compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1, is_lower_tail=True)
     p_low = compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=1, is_lower_tail=False)
-
+    print("phigh", p_high)
+    print("plow", p_low)
+    print(alpha, support, x, M, n, N)
     if p_high < alpha:
         upper_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, is_log=is_log, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
     elif p_high > alpha:
@@ -348,7 +356,7 @@ def compute_mle_for_oddratio(
         return np.inf
     
     mu = compute_mnhyper(support, M, n, N, is_log=is_log, odd_ratio=1)
-    print(mu)
+    print("mu", mu)
     if mu > x:
         root = brentq(lambda t: compute_mnhyper(support, M, n, N, is_log=is_log, odd_ratio=t) - x, 0, 1)
     elif mu < x:
@@ -356,7 +364,7 @@ def compute_mle_for_oddratio(
         root = 1 / root
     else:
         root = 1
-
+    print("root", root)
     return root
 
 
