@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "oddfisher"
+version = "0.1.0"
+description = ""
+authors = ["allen choi <choiae0417@gmail.com>"]
+readme = "README.md"
+packages = [{include = "oddfisher"}]
+include = ["README.rst", "setup.cfg", "oddfisher/py.typing"]
+
+[tool.poetry.scripts]
+oddfisher = "oddfisher.oddfisher:cli"
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+numpy = ">=2.0.1"
+pandas = ">=2.2.2"
+scipy = ">=1.14.0"
+pytest-cov = "^5.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=8.3.2"
+
+[tool.coverage.run]
+branch = true
+source = ["oddfisher"]
+parallel = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
