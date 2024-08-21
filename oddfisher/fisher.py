@@ -163,7 +163,7 @@ def compute_pnhyper(
     hi = min(N, n)
 
     if odd_ratio == 1:
-        if not is_lower_tail:
+        if not is_lower_tail:  # Upper tail = True
             x = x - 1
         return phyper(
             x,
@@ -199,7 +199,7 @@ def compute_dnhyper(
     M: int,
     n: int,
     N: int,
-    odd_ratio: int | float = 1,
+    odd_ratio: int | float = 1.0,
 ) -> list[float]:
     """Compute non-central hypergeomtric distribution parameter.
     
@@ -212,7 +212,12 @@ def compute_dnhyper(
         
     Returns:
 
+    Examples:
+        >>> support = np.arange(0, 4)
+        >>> compute_dnhyper(support, 10, 3, 4, 10)
+        array([0.00243309, 0.0729927 , 0.4379562 , 0.486618  ])
     """
+    print(dhyper(support, M, n, N))
     d = dhyper(support, M, n, N) + np.log(odd_ratio) * support
     d = np.exp(d - max(d))
     return d / np.sum(d)
@@ -264,7 +269,7 @@ def get_pvalue(
 
 
 def get_confidence_interval(
-    alpha: float,
+    confidence_level: float,
     support: list[int],
     x: int,
     M: int,
@@ -274,43 +279,55 @@ def get_confidence_interval(
     alternative: str, 
 ) -> tuple[float, float]:
     """Get confidence interval for the odd_ratio."""
-    lo = max(0, N - M + n)
-    hi = min(N, n)    
-
-    if x == hi:
-        upper_bound = np.inf
-
-    if x == lo:
-        lower_bound = 0
-
-    p_high = compute_pnhyper(support, x, M, n, N, odd_ratio=1, is_lower_tail=True)
-    p_low = compute_pnhyper(support, x, M, n, N, odd_ratio=1, is_lower_tail=False)
-    print("phigh", p_high)
-    print("plow", p_low)
-    print(alpha, support, x, M, n, N)
-    if p_high < alpha:
-        upper_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
-    elif p_high > alpha:
-        upper_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=1/t, is_lower_tail=True) - alpha, np.finfo(float).eps, 1)
-        upper_bound = 1 / upper_bound
-    else:
-        upper_bound = 1
-
-    if p_low > alpha:
-        lower_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
-    elif p_low < alpha:
-        lower_bound = brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=1/t, is_lower_tail=False) - alpha, np.finfo(float).eps, 1)
-        lower_bound = 1 / lower_bound
-    else:
-        lower_bound = 1 
-
     if alternative == "less":
-        return 0, upper_bound
+        ncp_u = get_ncp_u(1 - confidence_level, support, x, M, n, N)
+        return 0, ncp_u
 
     elif alternative == "greater":
-        return lower_bound, np.inf
+        ncp_l = get_ncp_l(1 - confidence_level, support, x, M, n, N)
+        return ncp_l, np.inf
     
-    return lower_bound, upper_bound
+    alpha = (1 - confidence_level) / 2
+    return get_ncp_l(alpha, support, x, M, n, N), get_ncp_u(alpha, support, x, M, n, N)
+
+def get_ncp_u(
+    alpha,
+    support,
+    x,
+    M,
+    n,
+    N,
+):
+    if x == min(N, n):
+        return np.inf
+    
+    p = compute_pnhyper(support, x, M, n, N, odd_ratio=1, is_lower_tail=True)
+    if p < alpha:
+        return brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
+    elif p > alpha:
+        return 1 / brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=1/t, is_lower_tail=True) - alpha, np.finfo(float).eps, 1)
+    else:
+        return 1
+
+def get_ncp_l(
+    alpha,
+    support,
+    x,
+    M,
+    n,
+    N,
+):
+    if x == max(0, N - M + n):
+        return 0
+
+    p = compute_pnhyper(support, x, M, n, N, odd_ratio=1, is_lower_tail=False)
+    print("P from ncp_l", p, "alpha", alpha)
+    if p > alpha:
+        return brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
+    elif p < alpha:  
+        return 1 / brentq(lambda t: compute_pnhyper(support, x, M, n, N, odd_ratio=1/t, is_lower_tail=False) - alpha, np.finfo(float).eps, 1)
+    else:
+        return 1
 
 
 def compute_mle_for_oddratio(
@@ -331,7 +348,7 @@ def compute_mle_for_oddratio(
         return np.inf
     
     mu = compute_mnhyper(support, M, n, N, odd_ratio=1)
-    print("mu", mu)
+    print("mu", mu, "x", x)
     if mu > x:
         root = brentq(lambda t: compute_mnhyper(support, M, n, N, odd_ratio=t) - x, 0, 1)
     elif mu < x:
@@ -367,10 +384,9 @@ def run_fisher_exact(
     
     estimate = compute_mle_for_oddratio(support, x, M, M - n, N, odd_ratio=odd_ratio)
     # compute_dnhyper(support, M, n, N, is_log=is_log, odd_ratio=odd_ratio)
-    alpha = (1 - conf_level) / 2 if alternative == "two_sided" else 1 - conf_level
-    print("estimate", estimate)
+    print("Estimate", estimate)
     confidence_interval = get_confidence_interval(
-        alpha,
+        conf_level,
         support,
         x,
         M,
