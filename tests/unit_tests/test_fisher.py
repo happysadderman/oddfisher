@@ -8,7 +8,7 @@ import numpy as np
 from pandas.testing import assert_frame_equal
 from pytest import mark
 
-from oddfisher.oddfisher import (
+from oddfisher.fisher import (
     dhyper,
     compute_dnhyper,
     compute_mnhyper,

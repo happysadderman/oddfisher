@@ -8,7 +8,7 @@ packages = [{include = "oddfisher"}]
 include = ["README.rst", "setup.cfg", "oddfisher/py.typing"]
 
 [tool.poetry.scripts]
-oddfisher = "oddfisher.oddfisher:cli"
+oddfisher = "oddfisher.fisher:cli"
 
 [tool.poetry.dependencies]
 python = ">=3.10"
@@ -22,6 +22,7 @@ pytest = ">=8.3.2"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "--doctest-modules"
 
 [tool.coverage.run]
 branch = true
