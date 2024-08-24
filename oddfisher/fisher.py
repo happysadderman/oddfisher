@@ -217,7 +217,6 @@ def compute_dnhyper(
         >>> compute_dnhyper(support, 10, 3, 4, 10)
         array([0.00243309, 0.0729927 , 0.4379562 , 0.486618  ])
     """
-    print(dhyper(support, M, n, N))
     d = dhyper(support, M, n, N) + np.log(odd_ratio) * support
     d = np.exp(d - max(d))
     return d / np.sum(d)
