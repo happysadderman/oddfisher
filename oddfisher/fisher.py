@@ -99,13 +99,13 @@ def phyper(
         is_lower_tail: True if probabilities are P[X≤x], otherwise, P[X>x]
 
     Examples:
-        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_Tail=False)  # 2x2 in [[1, 3], [2, 4]]
+        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_tail=False)  # 2x2 in [[1, 3], [2, 4]]
         array([-0.18232156, -1.09861229, -3.40119738,        -inf])
-        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_Tail=True)
+        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_tail=True)
         array([-1.79175947, -0.40546511, -0.03390155,  0.        ])
-        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=False, is_lower_Tail=False)
+        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=False, is_lower_tail=False)
         array([0.83333333, 0.33333333, 0.03333333, 0.        ])
-        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=False, is_lower_Tail=True)
+        >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=False, is_lower_tail=True)
         array([0.16666667, 0.66666667, 0.96666667, 1.        ])
 
     """
@@ -217,7 +217,6 @@ def compute_dnhyper(
         >>> compute_dnhyper(support, 10, 3, 4, 10)
         array([0.00243309, 0.0729927 , 0.4379562 , 0.486618  ])
     """
-    print(dhyper(support, M, n, N))
     d = dhyper(support, M, n, N) + np.log(odd_ratio) * support
     d = np.exp(d - max(d))
     return d / np.sum(d)
@@ -366,10 +365,7 @@ def run_fisher_exact(
     conf_level: float = 0.95,
     alternative: str = "two_sided",
 ) -> None:
-    """
-    >>> compute_dnhyper(np.array([[1, 3], [2, 4]]), odd_ratio=10, is_log=True)
-    array([0.00243309, 0.0729927 , 0.4379562 , 0.486618  ])
-    """
+    """Run fisher exact."""
     mn = data.sum(axis=1)
     M = sum(mn)
     n = mn[1]  # Total diseased, TP + FN
