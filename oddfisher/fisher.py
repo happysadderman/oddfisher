@@ -512,7 +512,7 @@ def arg_parser() -> argparse.ArgumentParser:
 
 
 def main():
-    args = arg_parser().parser()
+    args = arg_parser().parse_args()
     odd_ratio, ci, pvals = run_fisher_exact(
         data = np.array([args.a, args.b, args.c, args.d]).reshape((2, 2)),
         odd_ratio = args.odd_ratio,
