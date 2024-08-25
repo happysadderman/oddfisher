@@ -277,6 +277,7 @@ def get_pvalue(
     lower_tail_val = compute_pnhyper(
         support,
         x,
+        x,
         M,
         n,
         N,
@@ -470,8 +471,27 @@ def run_fisher_exact(
         odd_ratio=odd_ratio,
         alternative=alternative,
     )
-    print(confidence_interval)
-    return estimate, confidence_interval
+
+    pvalues = dict(zip(
+        ["two-sided", "less", "greater"],
+        get_pvalue(support, x, M, M - n, N, odd_ratio=odd_ratio)
+    ))
+    return estimate, confidence_interval, pvalues
+
+
+def print_result(args, odd_ratio, ci, pvals):
+    print("2x2 contingency table")
+    print(f"{args.a}, {args.c}")
+    print(f"{args.b}, {args.d}")
+    print("-------------------")
+    print(f"odd-raio: {args.odd_ratio}")
+    print(f"alternative: {args.alternative}")
+    print("-------------------")
+    print("Results")
+    print("-------------------")
+    print(f"p-value: {pvals}")
+    print(f"confidence interval at {args.conf_level}: {ci}")
+    print(f"odds ratio: {odd_ratio}")
 
 
 def arg_parser() -> argparse.ArgumentParser:
@@ -493,23 +513,13 @@ def arg_parser() -> argparse.ArgumentParser:
 
 def main():
     args = arg_parser().parser()
-    pval, ci = run_fisher_exact(
+    odd_ratio, ci, pvals = run_fisher_exact(
         data = np.array([args.a, args.b, args.c, args.d]).reshape((2, 2)),
         odd_ratio = args.odd_ratio,
         conf_level=args.conf_level,
         alternative=args.alternative,
     )
-
-    print("2x2 contingency table")
-    print(f"{args.a}, {args.c}")
-    print(f"{args.b}, {args.d}")
-    print("-------------------")
-    print(f"odd-raio: {args.odd_ratio}")
-    print(f"alternative: {args.alternative}")
-    print("-------------------")
-    print(f"p-value: {pval}")
-    print(f"confidence interval at {args.conf_level}: {ci}")
-
+    print_result(args, odd_ratio, ci, pvals)
 
 
 def cli(*, argv: list[str] | None = None, args: argparse.Namespace | None = None) -> None:
@@ -530,12 +540,13 @@ def cli(*, argv: list[str] | None = None, args: argparse.Namespace | None = None
     if args.command and args.func:
         if args.command == "fisherexact":
             data = np.array([args.a, args.b, args.c, args.d]).reshape((2, 2))
-            args.func(
+            odd_ratio, ci, pvals = args.func(
                 data=data,
                 odd_ratio=args.odd_ratio,
                 conf_level=args.conf_level,
                 alternative=args.alternative,
             )
+            print_result(args, odd_ratio, ci, pvals)
     else:
         parser.print_help()
 
