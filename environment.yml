@@ -1,0 +1,14 @@
+name: py310
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip:
+      - coverage==7.6.0
+      - numpy==2.0.1
+      - pandas==2.2.2
+      - pytest==8.3.2
+      - pytest-cov==5.0.0
+      - scipy==1.14.0
+
+
