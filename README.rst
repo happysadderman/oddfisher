@@ -1,5 +1,5 @@
-README for OddFisher
-####################
+ OddFisher
+##########
 
 oddfisher fisher exact test includes the odd ratio parameter, which is equivalent to *or* parameter from fisher.test in R, where **or** is hypothesized odds ratio.
 This parameter is currently not available in fisher exact test in scipy.stats package, and I hope to benefit the python users, looking for python-based fisher exact test with with hypothesized odds ratio parameter.
