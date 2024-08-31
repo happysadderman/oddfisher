@@ -14,37 +14,26 @@ from scipy.stats import hypergeom
 from scipy.optimize import brentq
 
 
-def check_input() -> None:
-    """Check imput.
+def check_input_and_return_2x2(args) -> np.ndarray:
+    """Check input type and return 2x2 numerical array.
     
+    Arguments a, b, c, and d is turns into 2x2 array.
+
+
     Args:
-        data: data in the format of 2x2 matrix
-        
+        args: parsed arguments, including args.a, b, c, and d
+    
+    Returns:
+        2x2 matrix constructed from arguments a, b, c, and d
+
     Raises:
         ValueError when the data is not in 2x2 format and/or not numeric
         
     """
-    pass
-
-
-def construct_2x2(
-    x: list[Any],
-    y: list[Any],
-    stringent: bool = False,
-) -> np.ndarray:
-    """Construct 2x2 metrics from list of x (i.e. condition) and y (i.e. outcome) data.
+    if isinstance(args.a, int) and isinstance(args.b, int) and isinstance(args.c, int) and isinstance(args.d, int):
+        return np.array([args.a, args.b, args.c, args.d]).reshape((2, 2))
     
-    Args:
-        x: binary conditions (i.e. treated vs. not treated)
-        y: binary outcomes (i.e. alive vs. dead)
-
-    Raises:
-        ValueError when more than 2 conditions are present in x and y
-        ValueError when len of x and y differs after removing NAs
-        ValueError when NAs present with the stringent set to True
-
-    """
-    pass
+    raise ValueError("Enter integer values for argument a, b, c and d")
 
 
 def dhyper(
@@ -55,8 +44,9 @@ def dhyper(
     is_log: bool = True,
 ) -> np.ndarray:
     """Compute non-central hypergeometric density distribution H with non-centrality parameter ncp, the odd ratio.
-    
-    Does not work for boundary values for ncp (0, int), but it does not need to.
+
+    Please refer to https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.hypergeom.html
+    This is a wrapper around scipy.hypergeom.logpmf and hypergeom.pmf to implement dhyper function in R.
 
     mapping of R to scipy::
 
@@ -66,12 +56,15 @@ def dhyper(
         * def hyper_sf(k, M, n, N): return rmath.lib.phyper(k, n, M-n, N, False, False)
 
     Args:
-        k: # of Successes (or called diseased)
+        k: # of Successes
         M: Total number of objects (TP + FN + FN + TN)
-        n: Total number of Type I objects or has disease (Total Positives, TP + FN)
-        N: # of Total Type I object drawn or dignosed as diseased (TP + FP)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
         is_log: True if in log scale
 
+    Returns:
+        result from density function dhyper
+    
     Examples:
         >>> dhyper([0, 1, 2, 3], 10, 3, 4)  # 2x2 in [[1, 3], [2, 4]]
         array([-1.79175947, -0.69314718, -1.2039728 , -3.40119738])
@@ -88,21 +81,20 @@ def phyper(
     is_lower_tail: bool = True,
 ) -> float:
     """Compute hypergeometric distribution H.
-    # >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_tail=False)  # 2x2 in [[1, 3], [2, 4]]
-    # array([-0.18232156, -1.09861229, -3.40119738,        -inf])
-    # >>> phyper([0, 1, 2, 3], 10, 3, 4, is_log=True, is_lower_tail=True)
-    # array([-1.79175947, -0.40546511, -0.03390155,  0.        ])
-    #     >>> phyper([0, 1, 2, 3], 10, 3, 4, is_lower_tail=False)       
-    #     array([0.83333333, 0.33333333, 0.03333333, 0.        ])
-    #     >>> phyper([0, 1, 2, 3], 10, 3, 4, is_lower_tail=True)        
-    #     array([0.16666667, 0.66666667, 0.96666667, 1.        ])
+
+    Please refer to https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.hypergeom.html
+    This is a wrapper around scipy.hypergeom.sf to implement phyper function in R.
+
     Args:
-        k: # of Successes (or called diseased)
+        k: # of Successes
         M: Total number of objects (TP + FN + FN + TN)
-        n: Total number of Type I objects or has disease (Total Positives, TP + FN)
-        N: # of Total Type I object drawn or dignosed as diseased (TP + FP)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
         is_lower_tail: True if probabilities are P[X≤x], otherwise, P[X>x]
 
+    Returns:
+        result from distribution function phyper
+    
     Examples:
         >>> phyper(0, 10, 3, 4, is_lower_tail=False)
         0.8333333333333334
@@ -122,11 +114,6 @@ def phyper(
         1.0
 
     """
-    # if is_log:
-    #     if is_lower_tail:
-    #         return np.log(1 - np.exp(hypergeom.logsf(k, M, n, N)))
-    #     else:
-    #         return hypergeom.logsf(k, M, n, N)
     if is_lower_tail:
         return float(1 - hypergeom.sf(k, M, n, N))
     else:
@@ -142,8 +129,18 @@ def compute_mnhyper(
 ) -> float:
     """Compute mnhyper.
     
-    Args:
+    This is to implement mnhyper function in R fisher.exact.
     
+    Args:
+        support: Density of the *central* hypergeometric distribution on its support
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
+        odd_ratio: non-centrality parameter ncp, the odds ratio
+
+    Returns:
+        result from distribution function mnhyper
+
     Examples:
     >>> support = np.arange(0, 4)
     >>> compute_mnhyper(support, 10, 3, 4, 10)
@@ -174,10 +171,19 @@ def compute_pnhyper(
 ) -> int | float:
     """Compute pnhyper.
     
+    This is to implement pnhyper function in R fisher.exact.
+
     Args:
-    
+        support: Density of the *central* hypergeometric distribution on its support
+        q: number of successes
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
+        is_lower_tail: default is True, set False for upper tail
+
     Returns:
-    
+        result from distribution function pnhyper
+
     Examples:
     >>> support = np.arange(0, 4)
     >>> compute_pnhyper(support, 1, 1, 10, 3, 4, odd_ratio=10)
@@ -230,14 +236,17 @@ def compute_dnhyper(
 ) -> np.ndarray:
     """Compute non-central hypergeomtric distribution parameter.
     
+    This is to implement dnhyper function in R fisher.exact.
+
     Args:
-        support:
-        M:
-        n:
-        N:
+        support: Density of the *central* hypergeometric distribution on its support
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
         odd_ratio: non-centrality parameter ncp, the odds ratio
         
     Returns:
+        result from density function dnhyper
 
     Examples:
         >>> support = np.arange(0, 4)
@@ -260,8 +269,19 @@ def get_pvalue(
     N: int,
     odd_ratio: int | float,
     relError: float = 1 + 10 ** -7,
-) -> tuple[int | float]:
-    """Get p-values."""
+) -> tuple[float]:
+    """Get p-values.
+    
+    Args:
+        support: Density of the *central* hypergeometric distribution on its support
+        x: number of successes
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
+        odd_ratio: non-centrality parameter ncp, the odds ratio
+        relError: relative error, default is e-7
+
+    """
     lo = max(0, N - n)
     hi = min(N, n)
 
@@ -271,7 +291,6 @@ def get_pvalue(
         two_tailed_val = int(x == hi)
     else:
         d = compute_dnhyper(support, M, n, N, odd_ratio=odd_ratio)
-        print("d", d)
         two_tailed_val = sum(d[d <= d[x - lo + 1] * relError])
     
     lower_tail_val = compute_pnhyper(
@@ -296,7 +315,7 @@ def get_pvalue(
         odd_ratio=odd_ratio,
     )
 
-    return two_tailed_val, lower_tail_val, upper_tail_val
+    return float(two_tailed_val), float(lower_tail_val), float(upper_tail_val)
 
 
 def get_confidence_interval(
@@ -309,7 +328,19 @@ def get_confidence_interval(
     odd_ratio: int | float,
     alternative: str, 
 ) -> tuple[float, float]:
-    """Get confidence interval for the odd_ratio."""
+    """Get confidence interval for the odd_ratio.
+    
+    Args:
+        confidence_level: confidence interval, default is 95% (0.95)
+        support: Density of the *central* hypergeometric distribution on its support
+        x: number of successes
+        M: Total number of objects (TP + FN + FN + TN)
+        n: Total number of Type I objects
+        N: # of Total Type I object drawn
+        odd_ratio: non-centrality parameter ncp, the odds ratio
+        alternative: default is "two_sided". Other options include "less" and "greater"
+    
+    """
     if alternative == "less":
         ncp_u = get_ncp_u(1 - confidence_level, support, x, M, n, N)
         return 0, ncp_u
@@ -321,6 +352,7 @@ def get_confidence_interval(
     alpha = (1 - confidence_level) / 2
     return get_ncp_l(alpha, support, x, M, n, N), get_ncp_u(alpha, support, x, M, n, N)
 
+
 def get_ncp_u(
     alpha,
     support,
@@ -329,6 +361,7 @@ def get_ncp_u(
     n,
     N,
 ):
+    """Get confidence interval upper."""
     if x == min(N, n):
         return np.inf
     
@@ -348,11 +381,12 @@ def get_ncp_l(
     n,
     N,
 ):
+    """Get confidence interval lower."""
     if x == max(0, N - M + n):
         return 0
 
     p = compute_pnhyper(support, x, x, M, n, N, odd_ratio=1, is_lower_tail=False)
-    print("P from ncp_l", p, "alpha", alpha)
+
     if p > alpha:
         return brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
     elif p < alpha:  
@@ -379,7 +413,7 @@ def compute_mle_for_oddratio(
         return np.inf
     
     mu = compute_mnhyper(support, M, n, N, odd_ratio=1)
-    print("mu", mu, "x", x)
+
     if mu > x:
         root = brentq(lambda t: compute_mnhyper(support, M, n, N, odd_ratio=t) - x, 0, 1)
     elif mu < x:
@@ -387,7 +421,7 @@ def compute_mle_for_oddratio(
         root = 1 / root
     else:
         root = 1
-    print("root", root)
+
     return root
 
 
@@ -413,54 +447,66 @@ def run_fisher_exact(
     [1,]    1    3
     [2,]    2    4
 
-    fisher.test(d)
+    This is to implement fisher.test in R with or without *or* parameter.
+    As shown below, 2x2 matrix data with values 1, 2, 3, and 4 results in p-value of 1 with CI 0.00851 and 20.296.
+    With hypothesized odds ratio of 10, p-value changes to 0.07543.
+    
+    Running oddfisher with --odd-ratio 10 outputs p-value of 0.075425 with CI(0.008503581019485222, 20.296323344994953)
+    With no odd-ratio, it outputs p-value of 1 as expected.
 
-    p-value = 1
-    alternative hypothesis: true odds ratio is not equal to 1
-    95 percent confidence interval:
-    0.008512238 20.296715040
-    sample estimates:
-    odds ratio
-    0.693793
-  
-    fisher.test(d, or=10)
+    .. code-block:: R
     
-    p-value = 0.07543
-    alternative hypothesis: true odds ratio is not equal to 10
-    95 percent confidence interval:
-    0.008512238 20.296715040
-    sample estimates:
-    odds ratio
-    0.693793
+        m <- sum(d[, 1L])  # 3
+        n <- sum(d[, 2L])  # 7
+        k <-sum(d[1L,])    # 4
+        x <-d[1L,1L]       # 1
+        lo<-max(0L, k-n)
+        hi<-min(k, m)
+        support <- lo:hi   # 0 1 2 3
+        as.numeric(support >= 1)   # 0 1 1 1 equivalent to False True True True
+        dnhyper(1)    # [1] 0.16666667 0.50000000 0.30000000 0.03333333
+        sum(dnhyper(1)[support >= 1])  # 0.8333333
+
+        fisher.test(d)
+
+        p-value = 1
+        alternative hypothesis: true odds ratio is not equal to 1
+        95 percent confidence interval:
+        0.008512238 20.296715040
+        sample estimates:
+        odds ratio
+        0.693793
     
-    m <- sum(d[, 1L])  # 3
-    n <- sum(d[, 2L])  # 7
-    k <-sum(d[1L,])    # 4
-    x <-d[1L,1L]       # 1
-    lo<-max(0L, k-n)
-    hi<-min(k, m)
-    support <- lo:hi   # 0 1 2 3
-    as.numeric(support >= 1)   # 0 1 1 1 equivalent to False True True True
+        fisher.test(d, or=10)
+        
+        p-value = 0.07543
+        alternative hypothesis: true odds ratio is not equal to 10
+        95 percent confidence interval:
+        0.008512238 20.296715040
+        sample estimates:
+        odds ratio
+        0.693793
     
-    dnhyper(1)    # [1] 0.16666667 0.50000000 0.30000000 0.03333333
-    sum(dnhyper(1)[support >= 1])  # 0.8333333
-    
+    Examples:
+        >>> data = np.array([1, 2, 3, 4]).reshape((2, 2))
+        >>> run_fisher_exact(data, odd_ratio=10)
+        (0.6937896639529924, (0.008503581019485222, 20.296323344994953), {'two-sided': 0.07542579075425782, 'less': 0.07542579075425782, 'greater': 0.997566909975669})
+        >>> run_fisher_exact(data)
+        (0.6937896639529924, (0.008503581019485222, 20.296323344994953), {'two-sided': 0.9999999999999999, 'less': 0.6666666666666667, 'greater': 0.8333333333333334})
+
     """
     mn = data.sum(axis=1)
     M = sum(mn)
-    n = mn[1]  # Total diseased, TP + FN
-    # M_minus_n = mn[0]  # Total healthy, FP + TN
-    N = data.sum(axis=0)[0]  # Number called diseased, TP + FP
+    n = mn[1]
+    N = data.sum(axis=0)[0]
 
     x = data[0][0]  # TP
     lo = max(0, N - n)
     hi = min(N, n)
-    # nval = "odd_ratio"
     support = np.arange(lo, hi)
     
     estimate = compute_mle_for_oddratio(support, x, M, M - n, N, odd_ratio=odd_ratio)
-    # compute_dnhyper(support, M, n, N, is_log=is_log, odd_ratio=odd_ratio)
-    print("Estimate", estimate)
+
     confidence_interval = get_confidence_interval(
         conf_level,
         support,
@@ -480,16 +526,19 @@ def run_fisher_exact(
 
 
 def print_result(args, odd_ratio, ci, pvals):
+    print("\n-------------------")
+    print("Inputs")
+    print("-------------------\n")
     print("2x2 contingency table")
-    print(f"{args.a}, {args.c}")
-    print(f"{args.b}, {args.d}")
-    print("-------------------")
-    print(f"odd-raio: {args.odd_ratio}")
+    print(f"    {args.a}, {args.c}")
+    print(f"    {args.b}, {args.d}")
+    print(f"odds ratio: {args.odd_ratio}")
     print(f"alternative: {args.alternative}")
-    print("-------------------")
-    print("Results")
-    print("-------------------")
-    print(f"p-value: {pvals}")
+    print("\n-------------------")
+    print("OddFisher Results")
+    print("-------------------\n")
+    print(f"p-values: {pvals}")
+    print(f"{args.alternative} p-value: {pvals[args.alternative]}")
     print(f"confidence interval at {args.conf_level}: {ci}")
     print(f"odds ratio: {odd_ratio}")
 
@@ -514,7 +563,7 @@ def arg_parser() -> argparse.ArgumentParser:
 def main():
     args = arg_parser().parse_args()
     odd_ratio, ci, pvals = run_fisher_exact(
-        data = np.array([args.a, args.b, args.c, args.d]).reshape((2, 2)),
+        data = check_input_and_return_2x2(args),
         odd_ratio = args.odd_ratio,
         conf_level=args.conf_level,
         alternative=args.alternative,
@@ -539,7 +588,8 @@ def cli(*, argv: list[str] | None = None, args: argparse.Namespace | None = None
 
     if args.command and args.func:
         if args.command == "fisherexact":
-            data = np.array([args.a, args.b, args.c, args.d]).reshape((2, 2))
+            data = check_input_and_return_2x2(args)
+
             odd_ratio, ci, pvals = args.func(
                 data=data,
                 odd_ratio=args.odd_ratio,
