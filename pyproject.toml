@@ -3,7 +3,7 @@ name = "oddfisher"
 version = "0.1.0"
 description = ""
 authors = ["allen choi <choiae0417@gmail.com>"]
-readme = "README.md"
+readme = "README.rst"
 packages = [{include = "oddfisher"}]
 include = ["README.rst", "setup.cfg", "oddfisher/py.typing"]
 
