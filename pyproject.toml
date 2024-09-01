@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oddfisher"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = ["allen choi <choiae0417@gmail.com>"]
 readme = "README.rst"
