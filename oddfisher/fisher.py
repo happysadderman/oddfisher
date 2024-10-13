@@ -41,6 +41,7 @@ def dhyper(
     M: int,
     n: int,
     N: int,
+    m: int,
     is_log: bool = True,
 ) -> np.ndarray:
     """Compute non-central hypergeometric density distribution H with non-centrality parameter ncp, the odd ratio.
@@ -70,7 +71,8 @@ def dhyper(
         array([-1.79175947, -0.69314718, -1.2039728 , -3.40119738])
     
     """
-    return hypergeom.logpmf(k, M, n, N) if is_log else hypergeom.pmf(k, M, n, N)
+    print(k)
+    return hypergeom.logpmf(k, M, m, N) if is_log else hypergeom.pmf(k, M, m, N)
 
 
 def phyper(
@@ -78,6 +80,7 @@ def phyper(
     M: int,
     n: int,
     N: int,
+    m: int,
     is_lower_tail: bool = True,
 ) -> float:
     """Compute hypergeometric distribution H.
@@ -115,9 +118,9 @@ def phyper(
 
     """
     if is_lower_tail:
-        return float(1 - hypergeom.sf(k, M, n, N))
+        return float(1 - hypergeom.sf(k, M, m, N))
     else:
-        return float(hypergeom.sf(k, M, n, N))
+        return float(hypergeom.sf(k, M, m, N))
 
 
 def compute_mnhyper(
@@ -125,6 +128,7 @@ def compute_mnhyper(
     M: int,
     n: int,
     N: int,
+    m: int,
     odd_ratio: int | float = 1,
 ) -> float:
     """Compute mnhyper.
@@ -153,10 +157,10 @@ def compute_mnhyper(
     3.0
     """
     if odd_ratio == 0:
-        return float(max(0, N - M + n))
+        return float(max(0, N - n))
     elif odd_ratio == np.inf:
-        return float(min(N, n))
-    return float((support * compute_dnhyper(support, M, n, N, odd_ratio=odd_ratio)).sum())
+        return float(min(N, m))
+    return float((support * compute_dnhyper(support, M, n, N, m, odd_ratio=odd_ratio)).sum())
 
 
 def compute_pnhyper(
@@ -166,6 +170,7 @@ def compute_pnhyper(
     M: int,
     n: int,
     N: int,
+    m: int,
     is_lower_tail: bool = True,
     odd_ratio: int | float = 1,
 ) -> int | float:
@@ -196,8 +201,8 @@ def compute_pnhyper(
     0.997566909975669
 
     """
-    lo = max(0, N - M + n)
-    hi = min(N, n)
+    lo = max(0, N - n)
+    hi = min(N, m)
 
     if odd_ratio == 1:
         return phyper(
@@ -205,6 +210,7 @@ def compute_pnhyper(
             M,
             n,
             N,
+            m,
             is_lower_tail=is_lower_tail,
         )
     
@@ -219,6 +225,7 @@ def compute_pnhyper(
             M,
             n,
             N,
+            m,
             odd_ratio=odd_ratio,
         ) * ([
             support <= q
@@ -232,6 +239,7 @@ def compute_dnhyper(
     M: int,
     n: int,
     N: int,
+    m: int,
     odd_ratio: int | float = 1,
 ) -> np.ndarray:
     """Compute non-central hypergeomtric distribution parameter.
@@ -256,7 +264,8 @@ def compute_dnhyper(
         array([0.16666667, 0.5       , 0.3       , 0.03333333])
     
     """
-    d = dhyper(support, M, n, N) + np.log(odd_ratio) * support
+    print(support, M, n, N, m)
+    d = dhyper(support, M, n, N, m) + np.log(odd_ratio) * support
     d = np.exp(d - max(d))
     return d / np.sum(d)
 
@@ -267,6 +276,7 @@ def get_pvalue(
     M: int,
     n: int,
     N: int,
+    m: int,
     odd_ratio: int | float,
     relError: float = 1 + 10 ** -7,
 ) -> tuple[float]:
@@ -283,14 +293,14 @@ def get_pvalue(
 
     """
     lo = max(0, N - n)
-    hi = min(N, n)
+    hi = min(N, m)
 
     if odd_ratio == 0:
         two_tailed_val = int(x == lo)
     elif odd_ratio == np.inf:
         two_tailed_val = int(x == hi)
     else:
-        d = compute_dnhyper(support, M, n, N, odd_ratio=odd_ratio)
+        d = compute_dnhyper(support, M, n, N, m, odd_ratio=odd_ratio)
         two_tailed_val = sum(d[d <= d[x - lo + 1] * relError])
     
     lower_tail_val = compute_pnhyper(
@@ -300,6 +310,7 @@ def get_pvalue(
         M,
         n,
         N,
+        m,
         is_lower_tail=True,
         odd_ratio=odd_ratio,
     )
@@ -311,6 +322,7 @@ def get_pvalue(
         M,
         n,
         N,
+        m,
         is_lower_tail=False,
         odd_ratio=odd_ratio,
     )
@@ -325,6 +337,7 @@ def get_confidence_interval(
     M: int,
     n: int,
     N: int,
+    m: int,
     odd_ratio: int | float,
     alternative: str, 
 ) -> tuple[float, float]:
@@ -342,15 +355,15 @@ def get_confidence_interval(
     
     """
     if alternative == "less":
-        ncp_u = get_ncp_u(1 - confidence_level, support, x, M, n, N)
+        ncp_u = get_ncp_u(1 - confidence_level, support, x, M, n, N, m)
         return 0, ncp_u
 
     elif alternative == "greater":
-        ncp_l = get_ncp_l(1 - confidence_level, support, x, M, n, N)
+        ncp_l = get_ncp_l(1 - confidence_level, support, x, M, n, N, m)
         return ncp_l, np.inf
     
     alpha = (1 - confidence_level) / 2
-    return get_ncp_l(alpha, support, x, M, n, N), get_ncp_u(alpha, support, x, M, n, N)
+    return get_ncp_l(alpha, support, x, M, n, N, m), get_ncp_u(alpha, support, x, M, n, N, m)
 
 
 def get_ncp_u(
@@ -360,16 +373,17 @@ def get_ncp_u(
     M,
     n,
     N,
+    m,
 ):
     """Get confidence interval upper."""
-    if x == min(N, n):
+    if x == min(N, m):
         return np.inf
     
-    p = compute_pnhyper(support, x, x, M, n, N, odd_ratio=1, is_lower_tail=True)
+    p = compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=1, is_lower_tail=True)
     if p < alpha:
-        return brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
+        return brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=t, is_lower_tail=True) - alpha, 0, 1)
     elif p > alpha:
-        return 1 / brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, odd_ratio=1/t, is_lower_tail=True) - alpha, np.finfo(float).eps, 1)
+        return 1 / brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=1/t, is_lower_tail=True) - alpha, np.finfo(float).eps, 1)
     else:
         return 1
 
@@ -380,17 +394,18 @@ def get_ncp_l(
     M,
     n,
     N,
+    m,
 ):
     """Get confidence interval lower."""
-    if x == max(0, N - M + n):
+    if x == max(0, N - n):
         return 0
 
-    p = compute_pnhyper(support, x, x, M, n, N, odd_ratio=1, is_lower_tail=False)
+    p = compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=1, is_lower_tail=False)
 
     if p > alpha:
-        return brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
+        return brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=t, is_lower_tail=False) - alpha, 0, 1)
     elif p < alpha:  
-        return 1 / brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, odd_ratio=1/t, is_lower_tail=False) - alpha, np.finfo(float).eps, 1)
+        return 1 / brentq(lambda t: compute_pnhyper(support, x, x, M, n, N, m, odd_ratio=1/t, is_lower_tail=False) - alpha, np.finfo(float).eps, 1)
     else:
         return 1
 
@@ -401,23 +416,24 @@ def compute_mle_for_oddratio(
     M: int,
     n: int,
     N: int,
+    m: int, # mn[0] = r_m
     odd_ratio: int | float,   
 ) -> int | float:
     """Compute MLE for odd ratio by solving E(X) = x."""
-    lo = max(0, N - M + n)
-    hi = min(N, n)
+    lo = max(0, N - n)
+    hi = min(N, m)
 
     if x == lo:
         return 0
     elif x == hi:
         return np.inf
     
-    mu = compute_mnhyper(support, M, n, N, odd_ratio=1)
+    mu = compute_mnhyper(support, M, n, N, m, odd_ratio=1)
 
     if mu > x:
-        root = brentq(lambda t: compute_mnhyper(support, M, n, N, odd_ratio=t) - x, 0, 1)
+        root = brentq(lambda t: compute_mnhyper(support, M, n, N, m, odd_ratio=t) - x, 0, 1)
     elif mu < x:
-        root = brentq(lambda t: compute_mnhyper(support, M, n, N, odd_ratio=1/t) - x, np.finfo(float).eps, 1)
+        root = brentq(lambda t: compute_mnhyper(support, M, n, N, m, odd_ratio=1/t) - x, np.finfo(float).eps, 1)
         root = 1 / root
     else:
         root = 1
@@ -495,32 +511,35 @@ def run_fisher_exact(
         (0.6937896639529924, (0.008503581019485222, 20.296323344994953), {'two-sided': 0.9999999999999999, 'less': 0.6666666666666667, 'greater': 0.8333333333333334})
 
     """
-    mn = data.sum(axis=1)
-    M = sum(mn)
-    n = mn[1]
-    N = data.sum(axis=0)[0]
+    mn = data.sum(axis=1)  # [3 7] same as r, sum 1st col, sum 2nd col, mn[0] is r_m
+    M = sum(mn)  # = 3 + 7 = 10 in r, that is total samples this is r_m + r_n
+    n = mn[1]  # = 7, which is r_n
+    N = data.sum(axis=0)[0]  # = 4, that is 1 + 3, sum of top row, = r_k
+    m = mn[0]  # 3, which is r_m
 
-    x = data[0][0]  # TP
-    lo = max(0, N - n)
-    hi = min(N, n)
-    support = np.arange(lo, hi)
+    x = data[0][0]  # TP  same as r_x
+    lo = max(0, N - n)  # max between 0 and r_k - r_n = N - n
+    hi = min(N, mn[0])  # min of r_k, r_m, that is N, mn[0]
+
+    support = np.arange(lo, hi + 1)
     
-    estimate = compute_mle_for_oddratio(support, x, M, M - n, N, odd_ratio=odd_ratio)
+    estimate = compute_mle_for_oddratio(support, x, M, n, N, m, odd_ratio=odd_ratio)
 
     confidence_interval = get_confidence_interval(
         conf_level,
         support,
         x,
         M,
-        M - n,
+        n,
         N,
+        m,
         odd_ratio=odd_ratio,
         alternative=alternative,
     )
 
     pvalues = dict(zip(
         ["two-sided", "less", "greater"],
-        get_pvalue(support, x, M, M - n, N, odd_ratio=odd_ratio)
+        get_pvalue(support, x, M, n, N, m, odd_ratio=odd_ratio)
     ))
     return estimate, confidence_interval, pvalues
 
